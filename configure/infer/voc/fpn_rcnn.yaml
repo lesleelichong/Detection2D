@@ -1,0 +1,71 @@
+save_dir: /home/lichong/project/object_detection/output_result/fpn_rcnn_voc/
+weight_file: /home/lichong/project/object_detection/checkpoints/fpn_rcnn/checkpoints/checkpoint_epoch_36.pth.tar
+scene_file: /home/lichong/project/datasets/voc/voc2007/ImageSets/Main/test.txt
+data_dir: /home/lichong/project/datasets/voc/voc2007/JPEGImages
+label_dir: /home/lichong/project/datasets/voc/voc2007/Annotations
+device: '0'
+
+# now only support w == h case
+input_size: &input_size
+  512
+class_num: &class_num
+  20
+input_channels: &input_channels
+  3
+include_bg: &include_bg
+  False
+
+data_name: voc
+keep_ratio: True
+data_kwargs: 
+  use_difficult: False
+image_mean: [0.485, 0.456, 0.406]
+image_std: [0.229, 0.224, 0.225]
+pipeline:
+  ap_metric:
+    iou_thresh: 0.5
+
+network:
+  name: fpn_faster_rcnn
+  backbone:
+    name: resnet50
+    n_channels: *input_channels
+    replace_stride_with_dilation: [False, False, True]   #[False, False, False]
+  neck:
+    name: fpn
+    #multi stages fpn detectcan. value can be int, or list which max length <= 3
+    #if len(in_channels) == 1 , means no fpn.
+    # out_channels must be the same with rpn in_channels and rcnnhead roi_in_channels
+    in_channels:  [2048, 1024, 512] 
+    out_channels: 256
+    upsample_mode: nearest
+  rpn:
+    # anchor_sizes must be [[]] style format, if not fpn , [[128, 256,512]],
+    # each element must be the same length in anchor_sizes
+    # strides also would be [[]] style format, if not fpn ,[16]
+    # in_channels multi stages fpn detectcan. value can be int, or list which max length <= 3
+    #if len(in_channels) == 1 , means no fpn. rpn in_channels must be the same length with neck in_channels
+    name: rpn
+    in_channels: [256, 256, 256]
+    anchor_sizes:  [[32, 64], [128, 224], [384, 480]]
+    aspect_ratios: [0.5, 1.0, 2.0]
+    strides: [8, 16, 32]
+    topk_pre_nms_proposals_test: 1000
+    topk_post_nms_proposals_test: 300
+    nms_thresh: 0.7
+    proposal_min_area: [25, 100, 400]
+    proposal_stds: [1, 1, 1, 1]
+    proposal_means: [0, 0, 0, 0]
+    rpn_head_type: standard
+    rpn_mode_type: sigmoid
+  head:
+    name: rcnnhead
+    proposal_stds: [0.1, 0.1, 0.2, 0.2]
+    proposal_means: [0, 0, 0, 0]
+    roi_pool_size: 7 
+    roi_in_channels: 256
+    roi_out_channels: 1024
+    num_classes: *class_num
+    include_bg: *include_bg
+    score_thresh: 0.1
+    nms_thresh: 0.5

@@ -1,0 +1,100 @@
+save_dir: /home/lichong/project/detectors/checkpoints/yolo/voc2
+
+class_num: &class_num
+  20
+input_channels: &input_channels
+  3
+one_stage_model: True
+device: '0'
+debug: 0
+seed: 0
+
+dataset:
+  name: voc
+  # now only support w == h case
+  train_input_size: [416, 512, 608, 736]
+  val_input_size: 416
+  keep_ratio: True
+  image_mean: [0.485, 0.456, 0.406]
+  image_std: [0.229, 0.224, 0.225]
+  use_difficult: False
+  max_bbox_num: 20
+  multiscale_interval: 6
+  preload_label: False
+  num_workers: 0
+
+  train_data_dir:  ['/home/lichong/project/datasets/voc/voc2007/JPEGImages',
+                    '/home/lichong/project/datasets/voc/voc2012/JPEGImages']                 
+  train_label_dir: ['/home/lichong/project/datasets/voc/voc2007/Annotations',
+                    '/home/lichong/project/datasets/voc/voc2012/Annotations']
+  train_lst:       ['/home/lichong/project/datasets/voc/voc2007/ImageSets/Main/trainval.txt',
+                    '/home/lichong/project/datasets/voc/voc2012/ImageSets/Main/trainval.txt'] 
+  val_data_dir:    ['/home/lichong/project/datasets/voc/voc2007/JPEGImages']                 
+  val_label_dir:   ['/home/lichong/project/datasets/voc/voc2007/Annotations']
+  val_lst:         ['/home/lichong/project/datasets/voc/voc2007/ImageSets/Main/test.txt']
+  augmentation:
+    flip_h: True
+    flip_v: False
+    saturation: True
+    hue: True
+    contrast: True
+    crop: False
+    gauss: True
+    probability: 0.5   
+  
+train:
+  resume_from: /home/lichong/project/object_detection/checkpoints/yolo/voc/checkpoints/checkpoint_epoch_34.pth.tar
+  train_batch_size: 2
+  val_batch_size: 10
+  max_epoch: 42
+  lr_decay_epoch: [20, 32]
+  lr_decay_scale: 0.1
+  log_frequency: 1    # for iter
+  first_eval_epoch: 2
+  eval_frequency: 2    # for epoch
+  metric_iou_thresh: 0.5
+  include_bg: False
+  freeze_keys: ['layer3', 'layer4'] 
+  optimizer:
+    #name: Adam
+    #lr: 4.0e-4 #0.01
+    #amsgrad: True #False
+    #weight_decay: 1.0e-4  #0
+    name: SGD
+    lr: 0.001
+    momentum: 0.9
+    weight_decay: 0.0001
+  
+  loss:
+    name: yololoss
+    ignore_iou_thresh: 0.5
+    weight_xy: 1.0
+    weight_wh: 1.0
+    weight_obj: 1.0 
+    weight_cls: 1.0
+    lambda_pos: 1.0
+    lambda_neg: 0.005
+
+
+network:
+  name: yolo
+  backbone:
+    name: resnet50
+    n_channels: *input_channels
+    replace_stride_with_dilation: [False, False, False]
+  backbone_resume_from: /home/lichong/project/finetune_models/resnet50-19c8e357.pth
+  neck:
+    name: yoloneck
+    #multi stages fpn detectcan. value can be int, or list which max length <= 3
+    in_channels: [2048, 1024, 512]  
+    unified_channels: [1024, 512, 256]
+  head:
+    name: yolohead
+    in_channels: [512, 256, 128]
+    class_num: *class_num
+    anchors: [[10, 13], [16, 30], [33, 23], [30, 61], [62, 45], [59, 119], [116, 90], [156, 198], [373, 326]]
+    strides: [8, 16, 32]
+  nms:
+    name: nms
+    score_thresh: 0.8
+    nms_thresh: 0.5

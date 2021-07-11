@@ -1,0 +1,47 @@
+save_dir: /home/lichong/project/object_detection/output_result/yolo_voc
+weight_file: /home/lichong/project/object_detection/checkpoints/yolo/voc/checkpoints/checkpoint_epoch_34.pth.tar
+scene_file: /home/lichong/project/datasets/voc/voc2007/ImageSets/Main/test.txt
+data_dir: /home/lichong/project/datasets/voc/voc2007/JPEGImages
+label_dir: /home/lichong/project/datasets/voc/voc2007/Annotations
+device: '0'
+
+# now only support w == h case
+input_size: 416
+class_num: &class_num
+  20
+input_channels: &input_channels
+  3
+include_bg: &include_bg
+  False
+
+data_name: voc
+keep_ratio: True
+data_kwargs: 
+  use_difficult: False
+image_mean: [0.485, 0.456, 0.406]
+image_std: [0.229, 0.224, 0.225]
+pipeline:
+  ap_metric:
+    iou_thresh: 0.5
+
+network:
+  name: yolo
+  backbone:
+    name: resnet50
+    n_channels: *input_channels
+    replace_stride_with_dilation: [False, False, False]
+  neck:
+    name: yoloneck
+    #multi stages fpn detectcan. value can be int, or list which max length <= 3
+    in_channels: [2048, 1024, 512]  
+    unified_channels: [1024, 512, 256]
+  head:
+    name: yolohead
+    in_channels: [512, 256, 128]
+    class_num: *class_num
+    anchors: [[10, 13], [16, 30], [33, 23], [30, 61], [62, 45], [59, 119], [116, 90], [156, 198], [373, 326]]
+    strides: [8, 16, 32]
+  nms:
+    name: nms
+    score_thresh: 0.8
+    nms_thresh: 0.5
