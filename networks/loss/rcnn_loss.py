@@ -10,32 +10,20 @@ from torch.nn import functional as F
 from networks.loss.focal_loss import Binary_Sigmoid_FocalLoss
 
 
-def smooth_l1_loss(input, target, beta = 1. / 9, size_average = False):
-    """
-    very similar to the smooth_l1_loss from pytorch, but with
-    the extra beta parameter
-    """
-    n = torch.abs(input - target)
-    cond = n < beta
-    loss = torch.where(cond, 0.5 * n ** 2 / beta, n - 0.5 * beta)
-    if size_average:
-        return loss.mean()
-    #return loss.sum()
-    return loss
-
-
 class RcnnLoss(object):
     def __init__(self, rpn_cls_weight=1.0, rpn_box_weight=1.0, 
                        rcnn_cls_weight=1.0, rcnn_box_weight=1.0,
+                       l1_loss_beta=1./9,
                        rpn_focal_loss=None):
         super(RcnnLoss, self).__init__()
         self.rpn_cls_weight = rpn_cls_weight
         self.rpn_box_weight = rpn_box_weight
         self.rcnn_cls_weight = rcnn_cls_weight
         self.rcnn_box_weight = rcnn_box_weight
+        self.l1_loss_beta = l1_loss_beta
         if rpn_focal_loss is not None:
             alpha = rpn_focal_loss.get('alpha', 0.25)
-            gamma = rpn_focal_loss.get('gamma', 0.25)
+            gamma = rpn_focal_loss.get('gamma', 2)
             reduction = rpn_focal_loss.get('reduction', 'mean')
             self.rpn_focal_loss = Binary_Sigmoid_FocalLoss(alpha, gamma, reduction)
         else:
@@ -50,7 +38,7 @@ class RcnnLoss(object):
             cls_loss = F.binary_cross_entropy_with_logits(props_score, props_label)
         else:
             cls_loss = self.rpn_focal_loss(props_score, props_label)
-        box_loss = F.smooth_l1_loss(props, props_targets, reduction='none', beta=1. / 9)
+        box_loss = F.smooth_l1_loss(props, props_targets, reduction='none', beta=self.l1_loss_beta)
         box_loss = box_loss.sum() / len(props_label)
         return cls_loss, box_loss
     
@@ -67,7 +55,7 @@ class RcnnLoss(object):
         props = props.reshape(len(props_targets), -1, 4)
         props_pos = props[sampled_pos_inds, labels_pos]
         props_pos_targets = props_targets[sampled_pos_inds]
-        box_loss = F.smooth_l1_loss(props_pos, props_pos_targets, reduction='none', beta=1. / 9)
+        box_loss = F.smooth_l1_loss(props_pos, props_pos_targets, reduction='none', beta=self.l1_loss_beta)
         box_loss = box_loss.sum() / props_label.numel()
         return cls_loss, box_loss
            

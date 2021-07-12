@@ -155,6 +155,6 @@ if __name__ == "__main__":
     parser.add_argument("--device-name", help="device to run", type=str, default="cuda")
     
     opts = parser.parse_args()
-    opts.cfg = 'configure/infer/voc/yolo.yaml'
-    #opts.cfg = 'configure/infer/voc/fpn_rcnn.yaml'
+    #opts.cfg = 'configure/infer/voc/yolo.yaml'
+    opts.cfg = 'configure/infer/voc/fpn_rcnn.yaml'
     main(opts)

@@ -14,6 +14,7 @@ def BBoxBatchIOU(boxes_a, boxes_b):
     Args:
         tl: top left
         br: bottom right
+        boxes_a, boxes_b: torch.tensor format.
     """
     tl = torch.max(boxes_a[...,:2], boxes_b[...,:2])
     br = torch.min(boxes_a[...,2:], boxes_b[...,2:])

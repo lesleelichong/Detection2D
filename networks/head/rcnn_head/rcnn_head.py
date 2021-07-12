@@ -56,6 +56,10 @@ class RcnnHead(nn.Module):
             return self._forward_test(inputs)
     
     def _forward_test(self, inputs):
+        r"""
+        rpn_props, rcnn_props: we use the rpn/rcnn intermediate proposals to
+        analyze the more detailed performance of the detector
+        """
         proposals = inputs['proposals']
         props_feature = self.roi_pool(inputs['features'], inputs['proposals'], 
                                       inputs['anchor_sizes'], inputs['strides'])

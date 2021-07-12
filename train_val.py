@@ -8,8 +8,7 @@
 import os
 import argparse
 import yaml
-import shutil      
-import numpy as np
+import shutil
 from timeit import default_timer as timer
 import torch
 from torch import nn
@@ -276,6 +275,7 @@ if __name__ == "__main__":
     parser.add_argument("--save-dir", help="output save dir", type=str)
     opts = parser.parse_args()
     cfg_list = [
+        #'configure/train_local/voc/yolo.yaml'
         #'configure/train_local/voc/rcnn_s16.yaml'
         'configure/train_local/voc/fpn_rcnn.yaml'
     ]

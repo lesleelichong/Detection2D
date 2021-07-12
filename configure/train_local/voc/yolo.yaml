@@ -43,7 +43,7 @@ dataset:
     probability: 0.5   
   
 train:
-  resume_from: /home/lichong/project/object_detection/checkpoints/yolo/voc/checkpoints/checkpoint_epoch_34.pth.tar
+  #resume_from: /home/lichong/project/object_detection/checkpoints/yolo/voc/checkpoints/checkpoint_epoch_34.pth.tar
   train_batch_size: 2
   val_batch_size: 10
   max_epoch: 42
@@ -74,6 +74,9 @@ train:
     weight_cls: 1.0
     lambda_pos: 1.0
     lambda_neg: 0.005
+    focal_loss: 
+      alpha: 0.005
+      gamma: 2
 
 
 network:

@@ -9,6 +9,7 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 from utils.bbox_utils import BBoxBatchIOU
+from networks.loss.focal_loss import Binary_Sigmoid_FocalLoss
 
 
 def GTBoxAnchorIndex(gt_boxes, anchors):
@@ -28,7 +29,8 @@ class YoloLoss(object):
                  weight_cls=1.0, 
                  lambda_pos = 1.0,
                  lambda_neg = 0.005,
-                 ignore_iou_thresh=0.7):
+                 ignore_iou_thresh=0.7,
+                 focal_loss=None):
         super(YoloLoss, self).__init__()
         self.ignore_iou_thresh = ignore_iou_thresh
         self.weight_xy = weight_xy
@@ -37,6 +39,13 @@ class YoloLoss(object):
         self.weight_cls = weight_cls
         self.lambda_pos = lambda_pos
         self.lambda_neg = lambda_neg
+        if focal_loss is not None:
+            alpha = focal_loss.get('alpha', 0.25)
+            gamma = focal_loss.get('gamma', 2)
+            reduction = focal_loss.get('reduction', 'sum')
+            self.focal_loss = Binary_Sigmoid_FocalLoss(alpha, gamma, reduction)
+        else:
+            self.focal_loss = None
 
     def _target_generator(self, y_pred, y_label, gt_bboxes_num):
         center_targets = torch.zeros_like(y_pred['raw_box_centers'])
@@ -81,7 +90,22 @@ class YoloLoss(object):
                 scale_targets[b, index, a_loc, 1] = np.log(b_height / anchor[1])
                 scale_weights[b, index, a_loc, :] = 2.0 - b_width * b_height / (width*height*stride*stride)
         return objness_targets, center_targets, scale_targets, class_targets, scale_weights
-               
+          
+    def _compute_objness_loss(self, objness_pred, objness_targets):
+        # only objness loss may need use focal loss
+        pos_mask = objness_targets > 0
+        neg_mask = objness_targets == 0
+        if self.focal_loss is None:
+            pos_loss = F.binary_cross_entropy_with_logits(input=objness_pred[pos_mask], 
+                                                              target=objness_targets[pos_mask], reduction='sum')
+            neg_loss = F.binary_cross_entropy_with_logits(input=objness_pred[neg_mask], 
+                                                              target=objness_targets[neg_mask], reduction='sum')
+            loss_obj = self.lambda_pos * pos_loss + self.lambda_neg * neg_loss
+        else:
+            mask = pos_mask + neg_mask
+            loss_obj = self.focal_loss(objness_pred[mask], objness_targets[mask])
+        return loss_obj
+        
     def compute_loss(self, inputs):
         y_pred, y_label, gt_bboxes_num = inputs['pred'], inputs['label'], inputs['bboxes_num']
         assert len(y_label.shape) == 3 and y_label.shape[-1] == 5
@@ -89,8 +113,7 @@ class YoloLoss(object):
         batch_size = y_label.shape[0]
         with torch.no_grad():
             objness_targets, center_targets, scale_targets, class_targets, scale_weights = self._target_generator(y_pred, y_label, gt_bboxes_num)
-        obj_pos_mask = objness_targets > 0
-        obj_neg_mask = objness_targets == 0
+        
         box_mask = (objness_targets > 0).repeat((1,1,1,2))
         class_mask = (objness_targets > 0).repeat((1,1,1,class_targets.shape[-1]))
         raw_box_centers = y_pred['raw_box_centers']
@@ -98,15 +121,11 @@ class YoloLoss(object):
         objness_pred = y_pred['objness_pred']        
         class_pred = y_pred['class_pred']
         
+        loss_obj = self._compute_objness_loss(objness_pred, objness_targets)
         loss_xy = F.binary_cross_entropy_with_logits(input=raw_box_centers[box_mask], target=center_targets[box_mask], 
                                                      weight=scale_weights[box_mask], reduction='sum')
         loss_wh = F.mse_loss(input=raw_box_scales[box_mask], target=scale_targets[box_mask], reduction='none')
         loss_wh = (0.5 * loss_wh * scale_weights[box_mask]).sum()
-        obj_pos_loss = F.binary_cross_entropy_with_logits(input=objness_pred[obj_pos_mask], target=objness_targets[obj_pos_mask],
-                                                          reduction='sum')
-        obj_neg_loss = F.binary_cross_entropy_with_logits(input=objness_pred[obj_neg_mask], target=objness_targets[obj_neg_mask],
-                                                          reduction='sum')
-        loss_obj = self.lambda_pos * obj_pos_loss + self.lambda_neg * obj_neg_loss
         loss_cls = F.binary_cross_entropy_with_logits(input=class_pred[class_mask], target=class_targets[class_mask],
                                                           reduction='sum')
         total_loss = self.weight_xy*loss_xy + self.weight_wh*loss_wh + self.weight_obj*loss_obj + self.weight_cls*loss_cls

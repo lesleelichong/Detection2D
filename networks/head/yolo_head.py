@@ -55,14 +55,16 @@ class YoloHead(nn.Module):
             offset = torch.from_numpy(offset.reshape(1,-1,1,2)).to(layer.device)
             anchor = torch.from_numpy(np.array(anchor).reshape(1,1,-1,2)).to(layer.device)
             b, c, h, w = layer.shape
-            anchor_index_map += [{'start_index': start_index, 'width':w, 'height':h, 'stride':stride} for _ in range(self.num_anchors)]
+            # use it to search the gt match anchor's fpn layer and location.
+            anchor_index_map += [{'start_index': start_index, 'width':w, 'height':h, 'stride':stride} 
+                                 for _ in range(self.num_anchors)]
             start_index += h * w
             layer = layer.reshape(b, c, -1)
-            pred = layer.permute(0,2,1).reshape(b, h*w, self.num_anchors, self.num_pred)
+            pred = layer.permute(0, 2, 1).reshape(b, h * w, self.num_anchors, self.num_pred)
             anchor_list.append(anchor)
             raw_box_centers.append(pred[:,:,:,:2])
             raw_box_scales.append(pred[:,:,:,2:4])
-            objness.append(pred[:,:,:,4].reshape(b,h*w,-1,1))
+            objness.append(pred[:,:,:,4].reshape(b, h * w, -1, 1))
             class_pred.append(pred[:,:,:,5:])
             bbox_center = (torch.sigmoid(pred[:,:,:,:2]) + offset) * stride
             bbox_scale = torch.exp(pred[:,:,:,2:4]) * anchor
@@ -80,6 +82,9 @@ class YoloHead(nn.Module):
                  'stage_num_anchors' : self.num_anchors }
 
     def _forward_test(self, pred_layers):
+        r"""
+        Return: An Tensor (B, N, [xmin，ymin,xmax,ymax, class, score])
+        """
         bbox_list = []
         score_list = []
         for layer, anchor, stride in zip(pred_layers, self.anchors[::-1], self.strides[::-1]):

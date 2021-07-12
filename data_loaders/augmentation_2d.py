@@ -118,28 +118,3 @@ class Augmentation2D:
     def __call__(self, image, label):
         #label [N, 5(x,y,x,y,cls)]
         return self.process(image, label)
-
-
-from PIL import Image
-img_list = ['2007_000170.jpg',
-            '2007_000175.jpg',
-            '2007_000187.jpg',
-            '2007_000241.jpg',
-            '2007_000243.jpg',
-            '2007_000250.jpg',
-            '2007_000256.jpg']
-
-'''
-func = Augmentation(crop=True)
-for idx, image_file in  enumerate(img_list):
-    image = Image.open(image_file).convert('RGB')
-    ori_image = np.array(image).astype(np.float32)
-    image, label = func(ori_image, label=None)
-    image = image.astype(np.uint8)
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    ori_image = cv2.cvtColor(ori_image, cv2.COLOR_RGB2BGR)
-    #image = np.concatenate([ori_image, image], axis=1)
-    cv2.imwrite('{}.png'.format(idx), image)
-bb = 9
-'''
-

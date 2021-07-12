@@ -17,7 +17,12 @@ from networks.rpn.rpn_head import rpn_head
 
 
 class RPN(nn.Module):
-    r"""Region Proposal Network."""
+    r"""Region Proposal Network.
+    TODO:
+        1. Although rpn_mode_type has softmax Interface. Now rpn objness classification only support sigmoid. 
+        2. The Training/Inference Parameters are confused together. Maybe there is an Base Class to solve it.
+        3. rpn_head_type: Now only support StandardRPNHead.
+    """
     def __init__(self, in_channels, anchor_sizes, aspect_ratios, strides, 
                  rpn_head_type, rpn_mode_type='sigmoid',
                  topk_pre_nms_proposals_test=2000,
@@ -51,6 +56,7 @@ class RPN(nn.Module):
         self.nms_thresh = nms_thresh
         self.strides = strides
         self.anchor_sizes = anchor_sizes
+        # Generate 128*128 size anchors map ahead of time
         self.anchors = generate_anchors(strides, anchor_sizes, 
                                         aspect_ratios, alloc_size)
         self.rpn_head = rpn_head(rpn_head_type, in_channels[0], 
@@ -75,7 +81,6 @@ class RPN(nn.Module):
         cls_label_list = []
         matched_gt_bboxes_list = []
         for b_label, gt_num in zip(self.gt_label, self.gt_bboxes_num):
-            # for whole background image
             if gt_num == 0:
                 cls_label = torch.zeros(anchors.shape[1], dtype=b_label.dtype, 
                                          device=b_label.device)

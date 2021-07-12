@@ -52,6 +52,8 @@ class NeckConv(nn.Module):
     
 
 class YoloNeck(nn.Module):
+    r"""The Standard Yolov3 Neck. Every Stage has five conv layers.
+    """
     def __init__(self, in_channels, unified_channels):
         super(YoloNeck, self).__init__()
         if isinstance(in_channels, int):

@@ -20,7 +20,10 @@ __all__ = ["Detector"]
 
 
 class Detector(nn.Module):
-    r""" """
+    r"""
+    Implements FPN Faster R-CNN or YOLOV3.
+    if rpn is None, this is YOLOV3, else, FPN Faster R-CNN.
+    """
     def __init__(self, name, backbone, neck, head, nms=None, rpn=None, backbone_resume_from=None):
         super(Detector, self).__init__()
         self.name = name
@@ -29,8 +32,7 @@ class Detector(nn.Module):
         if rpn is not None:
             self.rpn = build_rpn(rpn)
         if nms is not None:
-            self.nms = build_nms(nms)
-            
+            self.nms = build_nms(nms)  
         self.backbone = build_backbone(backbone)
         self.neck = build_neck(neck)
         self.head = build_head(head)
@@ -57,7 +59,11 @@ class Detector(nn.Module):
         return res
     
     def _forward_two_stage(self, inputs, is_training):
-        # contract: features is a dict of tensors
+        r"""
+        Arguments:
+            inputs (Dict): use dict to income input parameters.
+            if is_training is True, inputs dict must include "image, label, bboxes_num.
+        """
         features = self.backbone(inputs['image'])
         features = self.neck(features)
         if is_training:
@@ -69,7 +75,11 @@ class Detector(nn.Module):
         return res
     
     def _forward_one_stage(self, inputs, is_training):
-        # contract: features is a dict of tensors
+        r"""
+        Arguments:
+            inputs (Dict): use dict to income input parameters.
+            for one stage detector, only use inputs["images"].
+        """
         features = self.backbone(inputs['image'])
         features = self.neck(features)
         res = self.head(features, is_training=is_training)
