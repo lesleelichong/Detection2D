@@ -1,4 +1,4 @@
-# Detection2D: A PyTorch-Based 2D Obejct Detection Framework for FPN Faster R-CNN and YOLOv3
+# Detection2D: A PyTorch-Based 2D Object Detection Framework for FPN Faster R-CNN and YOLOv3
 
 ## Major structures
 
