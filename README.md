@@ -46,3 +46,7 @@
 ### Training example and Inference example
 
   It is easy to learn how to use it when we look at train_val/inference python file.
+
+## License
+
+This Code is released under the Apache 2.0 license, as found in the LICENSE file.
